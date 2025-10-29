@@ -19,7 +19,7 @@ interface AuthContextType {
 
 interface LoginData {
   login: {
-    token: string;
+    accessToken: string;
     user: User;
   };
 }
@@ -30,7 +30,7 @@ interface LoginVars {
 
 interface RegisterData {
   register: {
-    token: string;
+    accessToken: string;
     user: User;
   };
 }
@@ -63,24 +63,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const { data } = await loginMutation({
-      variables: { email, password },
-    });
+const login = async (email: string, password: string) => {
+  const { data } = await loginMutation({
+    variables: { email, password },
+  });
 
-    if (data?.login?.token) {
-      localStorage.setItem("authToken", data.login.token);
-      setUser(data.login.user);
-    }
-  };
+  if (!data?.login?.accessToken) {
+    throw new Error("Invalid credentials");
+  }
+
+  localStorage.setItem("authToken", data.login.accessToken);
+  setUser(data.login.user);
+};
 
   const register = async (name: string, email: string, password: string) => {
     const { data } = await registerMutation({
       variables: { name, email, password },
     });
 
-    if (data?.register?.token) {
-      localStorage.setItem("authToken", data.register.token);
+    if (data?.register?.accessToken) {
+      localStorage.setItem("authToken", data.register.accessToken);
       setUser(data.register.user);
     }
   };

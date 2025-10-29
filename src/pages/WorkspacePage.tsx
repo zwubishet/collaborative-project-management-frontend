@@ -1,21 +1,45 @@
-import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@apollo/client/react";
+import { useState } from "react";
 import { ArrowLeft, Plus, Users } from "lucide-react";
 import { GET_WORKSPACE } from "../graphql/queries";
 import Navbar from "../components/Navbar";
 import ProjectCard from "../components/ProjectCard";
 import CreateProjectModal from "../components/CreateProjectModal";
+import { useQuery } from "@apollo/client/react";
+
+// Type for GET_WORKSPACE
+type WorkspaceQuery = {
+  workspace: {
+    id: number;
+    name: string;
+    description?: string | null;
+    owner: { id: number; name: string };
+    members: { id: number; role: string; user: { id: number; name: string; email: string } }[];
+    projects: { id: number; name: string; description?: string | null; status: string }[];
+  };
+};
 
 export default function WorkspacePage() {
-  const { id } = useParams();
+  const { id: idStr } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data, loading, error } = useQuery(GET_WORKSPACE, {
+  const id = idStr ? parseInt(idStr, 10) : null;
+
+  if (!id || isNaN(id)) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <p className="text-red-600">Invalid workspace ID</p>
+      </div>
+    );
+  }
+
+  const { data, loading, error } = useQuery<WorkspaceQuery>(GET_WORKSPACE, {
     variables: { id },
     skip: !id,
   });
+
+
 
   if (loading) {
     return (
@@ -37,7 +61,7 @@ export default function WorkspacePage() {
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center">
-            <p className="text-red-600">Error loading workspace</p>
+            <p className="text-red-600">Error loading workspace: {error?.message}</p>
           </div>
         </div>
       </div>
@@ -92,7 +116,7 @@ export default function WorkspacePage() {
           <p className="text-slate-600 mt-1">Manage projects within this workspace</p>
         </div>
 
-        {workspace.projects.length === 0 ? (
+        {workspace.projects?.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
             <h3 className="text-xl font-semibold text-slate-900 mb-2">No projects yet</h3>
             <p className="text-slate-600 mb-6">Create your first project to get started</p>
@@ -106,7 +130,7 @@ export default function WorkspacePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {workspace.projects.map((project: any) => (
+            {workspace.projects?.map((project: any) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>
@@ -116,7 +140,7 @@ export default function WorkspacePage() {
       <CreateProjectModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        workspaceId={id!}
+        workspaceId={id.toString()} // ← Pass as string to modal
       />
     </div>
   );

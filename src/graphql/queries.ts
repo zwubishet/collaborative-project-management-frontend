@@ -16,9 +16,6 @@ export const GET_WORKSPACES = gql`
     myWorkspaces {
       id
       name
-      description
-      createdAt
-      updatedAt
       owner {
         id
         name
@@ -35,15 +32,11 @@ export const GET_WORKSPACES = gql`
   }
 `;
 
-
 export const GET_WORKSPACE = gql`
-  query GetWorkspace($id: ID!) {
+  query GetWorkspace($id: Int!) {
     workspace(id: $id) {
       id
       name
-      description
-      createdAt
-      updatedAt
       owner {
         id
         name
@@ -51,21 +44,11 @@ export const GET_WORKSPACE = gql`
       }
       members {
         id
-        name
-        email
-      }
-      projects {
-        id
-        name
-        description
-        status
-        createdAt
-        updatedAt
-        tasks {
+        role
+        user {
           id
-          title
-          status
-          priority
+          name
+          email
         }
       }
     }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@apollo/client/react";
+import { useQuery } from "@apollo/client";
 import { ArrowLeft, Plus, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { GET_PROJECT } from "../graphql/queries";
 import Navbar from "../components/Navbar";

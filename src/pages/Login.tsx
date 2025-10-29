@@ -11,20 +11,22 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+ const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    try {
-      await login(email, password);
-      navigate("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Failed to login");
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    await login(email, password);
+    console.log("Login success, navigating...");
+    navigate("/dashboard");
+  } catch (err: any) {
+    console.error("Login error:", err);
+    setError(err.message || "Failed to login");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
