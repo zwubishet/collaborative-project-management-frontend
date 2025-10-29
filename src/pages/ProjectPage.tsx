@@ -1,48 +1,25 @@
-import { useState } from "react";
+// src/pages/ProjectPage.tsx
+import { useState, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@apollo/client";
+import { useSuspenseQuery, skipToken } from "@apollo/client/react";
+import type { GetProjectQuery, GetProjectQueryVariables } from "../graphql/types";
 import { ArrowLeft, Plus, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { GET_PROJECT } from "../graphql/queries";
 import Navbar from "../components/Navbar";
 import TaskCard from "../components/TaskCard";
 import CreateTaskModal from "../components/CreateTaskModal";
 
-export default function ProjectPage() {
-  const { id } = useParams();
+function ProjectContent() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data, loading, error } = useQuery(GET_PROJECT, {
-    variables: { id },
-    skip: !id,
-  });
+const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
+  GET_PROJECT,
+  id ? { variables: { id } } : skipToken
+);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        <Navbar />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto"></div>
-            <p className="mt-4 text-slate-600">Loading project...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  if (error || !data?.project) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        <Navbar />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="text-center">
-            <p className="text-red-600">Error loading project</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const project = data.project;
   const workspace = project.workspace;
@@ -72,9 +49,7 @@ export default function ProjectPage() {
   const statusColor = statusColors[project.status as keyof typeof statusColors] || statusColors.PENDING;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-
+    <>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <button
           onClick={() => navigate(`/workspace/${workspace.id}`)}
@@ -191,6 +166,26 @@ export default function ProjectPage() {
         projectId={id!}
         members={workspace.members || []}
       />
+    </>
+  );
+}
+
+export default function ProjectPage() {
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <Navbar />
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto"></div>
+              <p className="mt-4 text-slate-600">Loading project...</p>
+            </div>
+          </div>
+        }
+      >
+        <ProjectContent />
+      </Suspense>
     </div>
   );
 }

@@ -51,6 +51,10 @@ export const GET_WORKSPACE = gql`
           email
         }
       }
+     projects {
+        id
+        name
+      }
     }
   }
 `;

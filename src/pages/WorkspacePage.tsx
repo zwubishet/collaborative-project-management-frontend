@@ -15,7 +15,7 @@ type WorkspaceQuery = {
     description?: string | null;
     owner: { id: number; name: string };
     members: { id: number; role: string; user: { id: number; name: string; email: string } }[];
-    projects: { id: number; name: string; description?: string | null; status: string }[];
+    projects: { id: number; name: string; }[];
   };
 };
 
@@ -36,10 +36,9 @@ export default function WorkspacePage() {
 
   const { data, loading, error } = useQuery<WorkspaceQuery>(GET_WORKSPACE, {
     variables: { id },
-    skip: !id,
   });
 
-
+  console.log("WorkspacePage data:", data, "loading:", loading, "error:", error);
 
   if (loading) {
     return (

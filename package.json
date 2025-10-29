@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
-    "@apollo/client": "^4.0.7",
+    "@apollo/client": "^4.0.8",
     "@supabase/supabase-js": "^2.57.4",
     "graphql": "^16.11.0",
     "graphql-ws": "^6.0.6",
