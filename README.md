@@ -109,7 +109,7 @@ src/
 
 ### Login Page
 
-![Login Screenshot](./screenshots/login.jpg)
+![Login Screenshot](./screenshots/login.png)
 
 ### Project Page
 
