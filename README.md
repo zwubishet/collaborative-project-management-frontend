@@ -1,8 +1,4 @@
-Here’s a template for a **README.md** for your **frontend project** with a screenshot section. You can customize the project name, descriptions, and image paths:
 
----
-
-````markdown
 # Collaboration Project Management - Frontend
 
 ![Project Screenshot](./screenshots/dashboard.png)
@@ -109,15 +105,15 @@ src/
 
 ### Dashboard
 
-![Dashboard Screenshot](./screenshots/dashboard.png)
+![Dashboard Screenshot](./screenshots/dashboard.jpg)
 
 ### Login Page
 
-![Login Screenshot](./screenshots/login.png)
+![Login Screenshot](./screenshots/login.jpg)
 
 ### Project Page
 
-![Project Screenshot](./screenshots/project.png)
+![Project Screenshot](./screenshots/project.jpg)
 
 ---
 
@@ -137,14 +133,7 @@ Contributions are welcome!
 
 This project is licensed under the MIT License.
 
-```
-
----
-
-✅ **Notes**:  
-- Save your screenshots in a folder called `screenshots` in your frontend root.  
-- Replace placeholder URLs with actual paths.  
-- Add or remove features as needed for your project.  
+```  
 
 ---
 
