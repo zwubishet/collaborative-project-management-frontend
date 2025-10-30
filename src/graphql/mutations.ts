@@ -26,6 +26,12 @@ export const LOGIN_MUTATION = gql`
   }
 `;
 
+export const SEND_RESET_PASSWORD_MUTATION = gql`
+  mutation SendResetPassword($email: String!) {
+    sendResetPassword(email: $email)
+  }
+`;
+
 export const LOGOUT_MUTATION = gql`
   mutation Logout {
     logout
@@ -38,7 +44,6 @@ export const CREATE_WORKSPACE = gql`
       id
       name
       description
-      createdAt
     }
   }
 `;
@@ -61,20 +66,28 @@ export const DELETE_WORKSPACE = gql`
 `;
 
 export const ADD_WORKSPACE_MEMBER = gql`
-  mutation AddWorkspaceMember($workspaceId: ID!, $userId: ID!) {
-    addWorkspaceMember(workspaceId: $workspaceId, userId: $userId) {
+  mutation addMember($workspaceId: Int!, $userId: Int!, $role: String!) {
+    addMember(workspaceId: $workspaceId, userId: $userId, role: $role) {
       id
-      members {
+      user {
         id
         name
         email
       }
+      role
     }
   }
 `;
 
+
+export const REMOVE_WORKSPACE_MEMBER = gql`
+  mutation removeMember($workspaceId: Int!, $userId: Int!) {
+    removeMember(workspaceId: $workspaceId, userId: $userId)
+  }
+`;
+
 export const CREATE_PROJECT = gql`
-  mutation CreateProject($workspaceId: ID!, $name: String!, $description: String, $status: String) {
+  mutation CreateProject($workspaceId: Int!, $name: String!, $description: String, $status: String) {
     createProject(workspaceId: $workspaceId, name: $name, description: $description, status: $status) {
       id
       name
@@ -103,18 +116,17 @@ export const DELETE_PROJECT = gql`
   }
 `;
 
-export const CREATE_TASK = gql`
-  mutation CreateTask($projectId: ID!, $title: String!, $description: String, $status: String, $priority: String, $dueDate: String, $assigneeId: ID) {
-    createTask(projectId: $projectId, title: $title, description: $description, status: $status, priority: $priority, dueDate: $dueDate, assigneeId: $assigneeId) {
-      id
-      title
-      description
-      status
-      priority
-      dueDate
-      createdAt
-    }
+export const Add_TASK = gql`
+mutation AddTask($input: AddTaskInput!) {
+  addTask(input: $input) {
+    id
+    title
+    description
+    status
+    priority
+    dueDate
   }
+}
 `;
 
 export const UPDATE_TASK = gql`
@@ -136,3 +148,38 @@ export const DELETE_TASK = gql`
     deleteTask(id: $id)
   }
 `;
+
+export const ASSIGN_TASK_MEMBER = gql`
+  mutation AssignTaskMember($taskId: Int!, $userId: Int!) {
+    assignTaskMember(taskId: $taskId, userId: $userId) {
+      id
+      assignees {
+        id
+        user {
+          id
+          name
+          email
+        }
+      }
+    }
+  }
+`;
+
+
+export const REMOVE_TASK_MEMBER = gql`
+  mutation RemoveTaskMember($taskId: Int!, $userId: Int!) {
+    removeTaskMember(taskId: $taskId, userId: $userId) {
+      id
+      assignees {
+        id
+        user {
+          id
+          name
+          email
+        }
+      }
+    }
+  }
+`;
+
+

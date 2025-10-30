@@ -7,7 +7,7 @@ import { GET_WORKSPACE } from "../graphql/queries";
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  workspaceId: string;
+  workspaceId: number;
 }
 
 export default function CreateProjectModal({ isOpen, onClose, workspaceId }: CreateProjectModalProps) {

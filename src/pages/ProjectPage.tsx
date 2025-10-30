@@ -2,34 +2,111 @@
 import { useState, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSuspenseQuery, skipToken } from "@apollo/client/react";
-import type { GetProjectQuery, GetProjectQueryVariables } from "../graphql/types";
 import { ArrowLeft, Plus, CheckCircle2, Clock, AlertCircle } from "lucide-react";
-import { GET_PROJECT } from "../graphql/queries";
+import { GET_PROJECT, GET_WORKSPACE } from "../graphql/queries";
 import Navbar from "../components/Navbar";
 import TaskCard from "../components/TaskCard";
 import CreateTaskModal from "../components/CreateTaskModal";
+
+
+ type GetProjectQueryVariables = {
+  projectId: number;
+};
+
+ type GetProjectQuery = {
+  project: {
+    id: string;
+    name: string;
+    status: "ACTIVE" | "PENDING" | "COMPLETED" | "ARCHIVED" | string;
+    createdAt: string;
+    updatedAt: string;
+    workspace: {
+      id: string;
+      name: string;
+      members?: {
+        id: string;
+        name: string;
+        email: string;
+        role: string;
+      }[];
+    };
+    tasks: {
+      id: string;
+      title: string;
+      description?: string | null;
+      status: "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED" | string;
+      createdAt: string;
+      updatedAt: string;
+    }[];
+  };
+};
+
+type WorkspaceQuery = {
+  workspace: {
+    id: number;
+    name: string;
+    description?: string | null;
+    owner: { id: number; name: string };
+    members: { id: number; role: string; user: { id: number; name: string; email: string } }[];
+    projects: { id: number; name: string }[];
+  };
+};
 
 function ProjectContent() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  
 
 const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
   GET_PROJECT,
-  id ? { variables: { id } } : skipToken
+  id ? { variables: { projectId: parseInt(id, 10) } } : skipToken
 );
 
+  // 2️⃣ Extract workspaceId from project
+  const workspaceId = data?.project?.workspace?.id;
+  console.log("Workspace ID:", workspaceId);
 
+
+const { data: workspaceData } = useSuspenseQuery<WorkspaceQuery>(
+  GET_WORKSPACE,
+  workspaceId ? { variables: { id: workspaceId } } : skipToken
+);
+
+console.log("Workspace Data:", workspaceData?.workspace.members);
+
+
+
+if (!data) {
+  throw new Error("Project data is undefined");
+}
 
   const project = data.project;
-  const workspace = project.workspace;
+  const workspace = workspaceData?.workspace;
+const taskCardMembers = workspace?.members?.map((m) => ({
+  id: m.user.id.toString(),
+  role: m.role,
+  user: {
+    ...m.user,
+    id: m.user.id.toString(), // convert user.id to string
+  },
+})) || [];
+const taskCardMembersForModal = workspace?.members?.map((m) => ({
+  id: m.user.id.toString(),
+  name: m.user.name,
+})) || [];
 
+
+  console.log(project.tasks);
   const tasksByStatus = {
     TODO: project.tasks.filter((t: any) => t.status === "TODO"),
     IN_PROGRESS: project.tasks.filter((t: any) => t.status === "IN_PROGRESS"),
     IN_REVIEW: project.tasks.filter((t: any) => t.status === "IN_REVIEW"),
     COMPLETED: project.tasks.filter((t: any) => t.status === "COMPLETED"),
   };
+  console.log("Tasks by status:", tasksByStatus);
+  console.log("Workspace members:", workspace?.members);
 
   const statusColors = {
     ACTIVE: "bg-green-100 text-green-700",
@@ -52,7 +129,7 @@ const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
     <>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <button
-          onClick={() => navigate(`/workspace/${workspace.id}`)}
+          onClick={() => navigate(`/workspace/${workspace?.id}`)}
           className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6 transition"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -69,12 +146,14 @@ const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
                   {project.status}
                 </span>
               </div>
-              {project.description && (
+              {/* {project.description != null && (
                 <p className="text-slate-600 mb-4">{project.description}</p>
-              )}
+              )} */}
+              
+                <p className="text-slate-600 mb-4">No Description</p>
               <div className="flex items-center gap-4 text-sm text-slate-600">
                 <span>
-                  <span className="font-medium">Workspace:</span> {workspace.name}
+                  <span className="font-medium">Workspace:</span> {workspace?.name}
                 </span>
                 <span>
                   <span className="font-medium">Total Tasks:</span> {project.tasks.length}
@@ -116,9 +195,10 @@ const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
                   {tasksByStatus.TODO.length}
                 </span>
               </div>
-              {tasksByStatus.TODO.map((task: any) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
+              {tasksByStatus.TODO.map((task: any, index: number) => (
+  <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
+))
+}
             </div>
 
             <div className="space-y-4">
@@ -128,9 +208,11 @@ const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
                   {tasksByStatus.IN_PROGRESS.length}
                 </span>
               </div>
-              {tasksByStatus.IN_PROGRESS.map((task: any) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
+              {tasksByStatus.IN_PROGRESS.map((task: any, index: number) => (
+  <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
+))
+}
+
             </div>
 
             <div className="space-y-4">
@@ -140,9 +222,9 @@ const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
                   {tasksByStatus.IN_REVIEW.length}
                 </span>
               </div>
-              {tasksByStatus.IN_REVIEW.map((task: any) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
+              {tasksByStatus.IN_REVIEW.map((task: any, index: number) => (
+  <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
+))}
             </div>
 
             <div className="space-y-4">
@@ -152,9 +234,9 @@ const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
                   {tasksByStatus.COMPLETED.length}
                 </span>
               </div>
-              {tasksByStatus.COMPLETED.map((task: any) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
+              {tasksByStatus.COMPLETED.map((task: any, index: number) => (
+  <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
+))}
             </div>
           </div>
         )}
@@ -163,8 +245,8 @@ const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
       <CreateTaskModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        projectId={id!}
-        members={workspace.members || []}
+        projectId={parseInt(project.id, 10)}
+        members={taskCardMembersForModal}
       />
     </>
   );

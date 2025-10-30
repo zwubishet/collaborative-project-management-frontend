@@ -1,5 +1,15 @@
 import { gql } from "@apollo/client";
 
+export const GET_ALL_USERS = gql`
+  query GetAllUsers {
+  users {
+    id
+    name
+    email
+  }
+  }
+`;
+
 export const ME_QUERY = gql`
   query Me {
     me {
@@ -59,16 +69,36 @@ export const GET_WORKSPACE = gql`
   }
 `;
 
-
-
+export const GET_WORKSPACE_PROJECTS = gql`
+query GetWorkspaceProjects($workspaceId: Int!) {
+  workspaceProjects(workspaceId: $workspaceId) {
+    id
+    name
+    createdAt
+    updatedAt
+    members {
+      id
+      role
+      user {
+        id
+        name
+        email
+      }
+    }
+    tasks {
+      id
+      title
+      status
+    }
+  }
+}
+`;
 
 export const GET_PROJECT = gql`
-  query GetProject($id: ID!) {
-    project(id: $id) {
+  query GetProject($projectId: Int!) {
+    project(projectId: $projectId) {
       id
       name
-      description
-      status
       createdAt
       updatedAt
       workspace {
@@ -80,20 +110,12 @@ export const GET_PROJECT = gql`
         title
         description
         status
-        priority
-        dueDate
         createdAt
         updatedAt
-        assignee {
-          id
-          name
-          email
-        }
       }
     }
   }
 `;
-
 export const GET_TASK = gql`
   query GetTask($id: ID!) {
     task(id: $id) {
@@ -112,11 +134,6 @@ export const GET_TASK = gql`
           id
           name
         }
-      }
-      assignee {
-        id
-        name
-        email
       }
     }
   }

@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { useMutation } from "@apollo/client/react";
+import {useMutation } from "@apollo/client/react";
+import { DocumentNode } from "graphql";
 import { X } from "lucide-react";
-import { CREATE_TASK } from "../graphql/mutations";
+import { Add_TASK } from "../graphql/mutations";
 import { GET_PROJECT } from "../graphql/queries";
 
 interface CreateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  projectId: string;
+  projectId: number;
   members?: Array<{ id: string; name: string }>;
 }
 
@@ -20,7 +21,30 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, members = 
   const [assigneeId, setAssigneeId] = useState("");
   const [error, setError] = useState("");
 
-  const [createTask, { loading }] = useMutation(CREATE_TASK, {
+  const [createTask, { loading }] = useMutation(Add_TASK, {
+    update(cache: { readQuery: (arg0: { query: DocumentNode; variables: { id: number; }; }) => any; writeQuery: (arg0: { query: DocumentNode; variables: { id: number; }; data: { getProject: any; }; }) => void; }, { data }: any) {
+      if (!data?.addTask) return;
+      const newTask = data.addTask;
+      
+      const existing = cache.readQuery({
+        query: GET_PROJECT,
+        variables: { id: projectId },
+      });
+
+      if (existing?.getProject) {
+        cache.writeQuery({
+          query: GET_PROJECT,
+          variables: { id: projectId },
+          data: {
+            getProject: {
+              ...existing.getProject,
+              tasks: [...existing.getProject.tasks, newTask],
+            },
+          },
+        });
+      }
+    },
+    // optional fallback refetch if cache not ready
     refetchQueries: [{ query: GET_PROJECT, variables: { id: projectId } }],
   });
 
@@ -31,15 +55,19 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, members = 
     try {
       await createTask({
         variables: {
-          projectId,
-          title,
-          description: description || null,
-          status,
-          priority,
-          dueDate: dueDate || null,
-          assigneeId: assigneeId || null,
+          input: {
+            projectId,
+            title,
+            description: description || null,
+            status,
+            priority,
+            dueDate: dueDate || null,
+            assigneeId: assigneeId || null,
+          },
         },
       });
+
+      // reset form and close modal
       setTitle("");
       setDescription("");
       setStatus("TODO");
@@ -59,10 +87,7 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, members = 
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-slate-200 sticky top-0 bg-white">
           <h2 className="text-xl font-semibold text-slate-900">Create Task</h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition"
-          >
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -97,9 +122,7 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, members = 
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Status
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
               <select
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none transition"
                 value={status}
@@ -113,9 +136,7 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, members = 
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Priority
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Priority</label>
               <select
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none transition"
                 value={priority}
@@ -130,9 +151,7 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, members = 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Due Date (Optional)
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Due Date (Optional)</label>
             <input
               type="date"
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none transition"
@@ -143,9 +162,7 @@ export default function CreateTaskModal({ isOpen, onClose, projectId, members = 
 
           {members.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Assign To (Optional)
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Assign To (Optional)</label>
               <select
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none transition"
                 value={assigneeId}

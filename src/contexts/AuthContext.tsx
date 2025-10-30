@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useMutation } from "@apollo/client/react";
 import { LOGIN_MUTATION, LOGOUT_MUTATION, REGISTER_MUTATION } from "../graphql/mutations";
+import { ME_QUERY } from "../graphql/queries";
+import { client } from "../apollo/client";
 
 interface User {
   id: string;
@@ -44,7 +46,7 @@ interface LogoutData {
   logout: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -54,14 +56,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [registerMutation] = useMutation<RegisterData, RegisterVars>(REGISTER_MUTATION);
   const [logoutMutation] = useMutation<LogoutData>(LOGOUT_MUTATION);
 
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setLoading(false);
-    } else {
+useEffect(() => {
+  const token = localStorage.getItem("authToken");
+  if (!token) {
+    setLoading(false);
+    return;
+  }
+
+  interface MeData {
+  me: User | null;
+}
+
+  // fetch current user from backend
+  const fetchUser = async () => {
+    try {
+      const { data } = await client.query<MeData>({
+        query: ME_QUERY,
+        context: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+        fetchPolicy: "no-cache", // avoid cached stale data
+      });
+
+      if (data?.me) {
+        setUser(data.me); // assume 'me' returns { id, name, email }
+      } else {
+        localStorage.removeItem("authToken");
+        setUser(null);
+      }
+    } catch (err) {
+      console.error("Failed to fetch user", err);
+      localStorage.removeItem("authToken");
+      setUser(null);
+    } finally {
       setLoading(false);
     }
-  }, []);
+  };
+
+  fetchUser();
+}, []);
 
 const login = async (email: string, password: string) => {
   const { data } = await loginMutation({

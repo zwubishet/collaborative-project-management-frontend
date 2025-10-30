@@ -1,13 +1,15 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { ArrowLeft, Plus, Users } from "lucide-react";
-import { GET_WORKSPACE } from "../graphql/queries";
+import { useState, useContext } from "react";
+import { ArrowLeft, Plus, Users, UserPlus, Trash2, Loader2 } from "lucide-react";
+import { GET_WORKSPACE, GET_WORKSPACE_PROJECTS } from "../graphql/queries";
+import { ADD_WORKSPACE_MEMBER, REMOVE_WORKSPACE_MEMBER } from "../graphql/mutations";
+import { GET_ALL_USERS } from "../graphql/queries";
 import Navbar from "../components/Navbar";
 import ProjectCard from "../components/ProjectCard";
 import CreateProjectModal from "../components/CreateProjectModal";
-import { useQuery } from "@apollo/client/react";
+import { useQuery, useMutation } from "@apollo/client/react";
+import { AuthContext } from "../contexts/AuthContext";
 
-// Type for GET_WORKSPACE
 type WorkspaceQuery = {
   workspace: {
     id: number;
@@ -15,132 +17,295 @@ type WorkspaceQuery = {
     description?: string | null;
     owner: { id: number; name: string };
     members: { id: number; role: string; user: { id: number; name: string; email: string } }[];
-    projects: { id: number; name: string; }[];
+    projects: { id: number; name: string }[];
   };
+};
+
+type WorkspaceProjectsQuery = {
+  workspaceProjects: {
+    id: number;
+    name: string;
+    members: { id: number; role: string; user: { id: number; name: string; email: string } }[];
+    projects: { id: number; title: string; status: string }[];
+  }[];
+};
+
+type User = {
+  id: number;
+  name: string;
+  email: string;
 };
 
 export default function WorkspacePage() {
   const { id: idStr } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [newMemberRole, setNewMemberRole] = useState<"MEMBER" | "VIEWER">("MEMBER");
+
+  const { user: loggedInUser } = useContext(AuthContext)!;
+  const contextUserId = loggedInUser?.id ? Number(loggedInUser.id) : undefined;
 
   const id = idStr ? parseInt(idStr, 10) : null;
+  if (!id || isNaN(id)) return <p className="text-red-600">Invalid workspace ID</p>;
 
-  if (!id || isNaN(id)) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-red-600">Invalid workspace ID</p>
-      </div>
-    );
-  }
+  // Fetch workspace data
+  const { data: workspaceData, loading: workspaceLoading, error: workspaceError } = useQuery<WorkspaceQuery>(GET_WORKSPACE, { variables: { id } });
 
-  const { data, loading, error } = useQuery<WorkspaceQuery>(GET_WORKSPACE, {
-    variables: { id },
+  // Fetch workspace projects
+  const { data: projectsData, loading: projectsLoading } = useQuery<WorkspaceProjectsQuery>(GET_WORKSPACE_PROJECTS, { variables: { workspaceId: id } });
+  const projects = projectsData?.workspaceProjects || [];
+
+  // Fetch all users for adding to workspace
+  const { data: allUsersData, loading: allUsersLoading } = useQuery<{ users: User[] }>(GET_ALL_USERS);
+  const allUsers = allUsersData?.users || [];
+
+  // Mutations
+  const [addMemberMutation, { loading: addingMember }] = useMutation(ADD_WORKSPACE_MEMBER, {
+    refetchQueries: [{ query: GET_WORKSPACE, variables: { id } }],
+  });
+  const [removeMemberMutation, { loading: removingMember }] = useMutation(REMOVE_WORKSPACE_MEMBER, {
+    refetchQueries: [{ query: GET_WORKSPACE, variables: { id } }],
   });
 
-  console.log("WorkspacePage data:", data, "loading:", loading, "error:", error);
+  // Add member
+  const handleAddMember = async () => {
+    if (!selectedUserId) return alert("Select a user");
+    try {
+      await addMemberMutation({
+        variables: {
+          workspaceId: id,
+          userId: selectedUserId,
+          role: newMemberRole,
+        },
+      });
+      setSelectedUserId(null);
+      setNewMemberRole("MEMBER");
+    } catch (err: any) {
+      alert(err.message);
+      console.error(err as Error);
+    }
+  };
 
-  if (loading) {
+  // Remove member
+  const handleRemoveMember = async (userId: number) => {
+    if (!confirm("Are you sure you want to remove this member?")) return;
+    try {
+      await removeMemberMutation({ variables: { workspaceId: id, userId } });
+    } catch (err: any) {
+      alert(err.message);
+      console.error(err as Error);
+    }
+  };
+
+  if (workspaceLoading) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <Navbar />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto"></div>
-            <p className="mt-4 text-slate-600">Loading workspace...</p>
-          </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-slate-600">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span>Loading workspace...</span>
         </div>
       </div>
     );
   }
 
-  if (error || !data?.workspace) {
+  if (workspaceError || !workspaceData?.workspace) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <Navbar />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="text-center">
-            <p className="text-red-600">Error loading workspace: {error?.message}</p>
-          </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 font-medium">Error loading workspace</p>
+          <p className="text-slate-500 text-sm mt-1">{workspaceError?.message}</p>
         </div>
       </div>
     );
   }
 
-  const workspace = data.workspace;
+  const workspace = workspaceData.workspace;
 
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* Back Button */}
         <button
           onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6 transition"
+          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-8 transition-colors text-sm font-medium"
         >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Back to Dashboard</span>
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
         </button>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-          <div className="flex items-start justify-between">
+        {/* Workspace Header Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">{workspace.name}</h1>
-              {workspace.description && (
-                <p className="text-slate-600 mb-4">{workspace.description}</p>
+              <h1 className="text-3xl font-bold text-slate-900">{workspace.name}</h1>
+              {workspace.description ? (
+                <p className="text-slate-600 mt-2 max-w-3xl">{workspace.description}</p>
+              ) : (
+                <p className="text-slate-400 italic mt-2">No description</p>
               )}
-              <div className="flex items-center gap-4 text-sm text-slate-600">
+              <div className="flex flex-wrap items-center gap-6 mt-4 text-sm text-slate-600">
                 <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span>{workspace.members.length} members</span>
+                  <Users className="w-4 h-4 text-slate-500" />
+                  <span className="font-medium">{workspace.members.length} members</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">Owner:</span>
-                  <span>{workspace.owner.name}</span>
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                  <span>Owner: <span className="font-medium">{workspace.owner.name}</span></span>
                 </div>
               </div>
             </div>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition"
+              className="flex items-center gap-2.5 px-5 py-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl hover:shadow-md transition-all font-medium text-sm"
             >
               <Plus className="w-5 h-5" />
-              <span>New Project</span>
+              New Project
             </button>
           </div>
         </div>
 
-        <div className="mb-4">
-          <h2 className="text-2xl font-bold text-slate-900">Projects</h2>
-          <p className="text-slate-600 mt-1">Manage projects within this workspace</p>
+        {/* Members Section */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-bold text-slate-900">Team Members</h2>
+            <span className="text-sm text-slate-500">{workspace.members.length} total</span>
+          </div>
+
+          <div className="space-y-3">
+            {workspace.members.map((member) => (
+              <div
+                key={member.id}
+                className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    {member.user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900">{member.user.name}</p>
+                    <p className="text-sm text-slate-500">{member.user.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    member.role === "OWNER"
+                      ? "bg-purple-100 text-purple-700"
+                      : member.role === "MEMBER"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-100 text-slate-700"
+                  }`}>
+                    {member.role}
+                  </span>
+                  {workspace.owner.id === contextUserId && member.user.id !== workspace.owner.id && (
+                    <button
+                      onClick={() => handleRemoveMember(member.user.id)}
+                      disabled={removingMember}
+                      className="text-red-600 hover:text-red-700 disabled:opacity-50 transition-colors"
+                    >
+                      {removingMember ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Add Member Form */}
+          {workspace.owner.id === contextUserId && (
+            <div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select
+                  value={selectedUserId || ""}
+                  onChange={(e) => setSelectedUserId(Number(e.target.value))}
+                  className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors disabled:bg-slate-100"
+                  disabled={allUsersLoading}
+                >
+                  <option value="" disabled>{allUsersLoading ? "Loading users..." : "Select a user"}</option>
+                  {allUsers
+                    .filter(u => !workspace.members.some(m => m.user.id === u.id))
+                    .map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name} ({user.email})
+                      </option>
+                    ))}
+                </select>
+
+                <select
+                  value={newMemberRole}
+                  onChange={(e) => setNewMemberRole(e.target.value as "MEMBER" | "VIEWER")}
+                  className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                >
+                  <option value="MEMBER">Member</option>
+                  <option value="VIEWER">Viewer</option>
+                </select>
+
+                <button
+                  onClick={handleAddMember}
+                  disabled={addingMember || !selectedUserId}
+                  className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-emerald-400 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                >
+                  {addingMember ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      Add Member
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {workspace.projects?.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
+        {/* Projects Section */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Projects</h2>
+              <p className="text-slate-600 mt-1">All projects in this workspace</p>
+            </div>
+            {projects.length > 0 && (
+              <span className="text-sm text-slate-500">{projects.length} project{projects.length > 1 ? 's' : ''}</span>
+            )}
+          </div>
+        </div>
+
+        {/* Loading Projects */}
+        {projectsLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
+            <div className="w-20 h-20 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+              <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
             <h3 className="text-xl font-semibold text-slate-900 mb-2">No projects yet</h3>
-            <p className="text-slate-600 mb-6">Create your first project to get started</p>
+            <p className="text-slate-600 mb-6 max-w-md mx-auto">Get started by creating your first project in this workspace.</p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition"
+              className="inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl hover:shadow-md transition-all font-medium"
             >
               <Plus className="w-5 h-5" />
-              <span>Create Project</span>
+              Create Project
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {workspace.projects?.map((project: any) => (
+            {projects.map((project: any) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>
         )}
       </main>
 
-      <CreateProjectModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        workspaceId={id.toString()} // ← Pass as string to modal
-      />
+      <CreateProjectModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} workspaceId={id} />
     </div>
   );
 }
