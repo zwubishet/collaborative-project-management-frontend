@@ -1,7 +1,7 @@
 
 # Collaboration Project Management - Frontend
 
-![Project Screenshot](./screenshots/dashboard.png)
+![Project Screenshot](./screenshots/dashboard.jpg)
 
 ## Table of Contents
 
@@ -105,7 +105,7 @@ src/
 
 ### Dashboard
 
-![Dashboard Screenshot](./screenshots/dashboard.jpg)
+![Dashboard Screenshot](./screenshots/workspace.jpg)
 
 ### Login Page
 
