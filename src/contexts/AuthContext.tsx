@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { LOGIN_MUTATION, LOGOUT_MUTATION, REGISTER_MUTATION } from "../graphql/mutations";
 import { ME_QUERY } from "../graphql/queries";
 import { client } from "../apollo/client";
+import axios from "axios";
 
 interface User {
   id: string;
@@ -111,16 +112,18 @@ const login = async (email: string, password: string) => {
   setUser(data.login.user);
 };
 
-  const register = async (name: string, email: string, password: string) => {
-    const { data } = await registerMutation({
-      variables: { name, email, password },
-    });
 
-    if (data?.register?.accessToken) {
-      localStorage.setItem("authToken", data.register.accessToken);
-      setUser(data.register.user);
-    }
-  };
+const register = async (name: string, email: string, password: string) => {
+  const { data } = await axios.post("http://localhost:4000/auth/register", {
+    withcridentials: true,
+    name,
+    email,
+    password,
+  });
+  localStorage.setItem("authToken", data.accessToken);
+  setUser(data.user);
+};
+
 
   const logout = async () => {
     await logoutMutation();
