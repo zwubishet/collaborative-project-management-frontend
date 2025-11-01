@@ -53,7 +53,6 @@ export const UPDATE_WORKSPACE = gql`
       id
       name
       description
-      updatedAt
     }
   }
 `;
