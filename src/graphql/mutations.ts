@@ -152,30 +152,27 @@ export const ASSIGN_TASK_MEMBER = gql`
   mutation AssignTaskMember($taskId: Int!, $userId: Int!) {
     assignTaskMember(taskId: $taskId, userId: $userId) {
       id
-      assignees {
-        id
-        user {
-          id
-          name
-          email
-        }
-      }
+      title
+     assignees {
+  id
+  user {
+    id
+    name
+    email
+  }
+}
     }
   }
 `;
-
 
 export const REMOVE_TASK_MEMBER = gql`
   mutation RemoveTaskMember($taskId: Int!, $userId: Int!) {
     removeTaskMember(taskId: $taskId, userId: $userId) {
       id
+      title
       assignees {
         id
-        user {
-          id
-          name
-          email
-        }
+        name
       }
     }
   }

@@ -15,6 +15,7 @@ import CreateTaskModal from "../components/CreateTaskModal";
 
  type GetProjectQuery = {
   project: {
+    description: null;
     id: string;
     name: string;
     status: "ACTIVE" | "PENDING" | "COMPLETED" | "ARCHIVED" | string;
@@ -146,11 +147,9 @@ const taskCardMembersForModal = workspace?.members?.map((m) => ({
                   {project.status}
                 </span>
               </div>
-              {/* {project.description != null && (
+              {project.description != null && (
                 <p className="text-slate-600 mb-4">{project.description}</p>
-              )} */}
-              
-                <p className="text-slate-600 mb-4">No Description</p>
+              )}
               <div className="flex items-center gap-4 text-sm text-slate-600">
                 <span>
                   <span className="font-medium">Workspace:</span> {workspace?.name}

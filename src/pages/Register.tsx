@@ -30,13 +30,18 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await register(name, email, password);
-      navigate("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Failed to register");
-    } finally {
-      setLoading(false);
-    }
+  await register(name, email, password);
+  navigate("/dashboard");
+} catch (err: any) {
+  if (err.response?.status === 400 && err.response?.data?.message === "User already exists") {
+    setError("User already registered. Please log in instead.");
+  } else {
+    setError(err.response?.data?.message || "Failed to register");
+  }
+} finally {
+  setLoading(false);
+}
+
   };
 
   return (

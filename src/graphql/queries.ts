@@ -99,6 +99,8 @@ export const GET_PROJECT = gql`
     project(projectId: $projectId) {
       id
       name
+      description
+      status
       createdAt
       updatedAt
       workspace {
@@ -135,6 +137,14 @@ export const GET_TASK = gql`
           name
         }
       }
+      assignees {
+      id
+      user {
+        id
+        name
+        email
+      }
+    }
     }
   }
 `;

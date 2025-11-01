@@ -10,7 +10,10 @@ interface Task {
   status: string;
   priority: string;
   dueDate?: string;
-  assignees?: { id: string; name: string }[];
+  assignees?: { 
+    id: string; 
+    user: { id: string; name: string; email: string } 
+  }[];
 }
 
 interface Member {
@@ -31,16 +34,51 @@ interface TaskCardProps {
 export default function TaskCard({ task, members = [] }: TaskCardProps) {
   const [isAdding, setIsAdding] = useState(false);
 
-  const [assignMember] = useMutation(ASSIGN_TASK_MEMBER);
-  const [removeMember] = useMutation(REMOVE_TASK_MEMBER);
+  const [assignMember] = useMutation(ASSIGN_TASK_MEMBER, {
+  update(cache, { data }: any) {
+    const newAssignee = data?.assignTaskMember.assignees.slice(-1)[0];
+    if (!newAssignee) return;
+
+    const taskIdCache = cache.identify({ __typename: "Task", id: task.id });
+
+    cache.modify({
+      id: taskIdCache,
+      fields: {
+        assignees(existing: ReadonlyArray<any> = []) {
+          const mutable = [...existing] as any[];
+          if (mutable.some((a) => a.user.id === newAssignee.user.id)) return existing;
+          return [...mutable, newAssignee];
+        },
+      },
+    });
+  },
+});
+
+const [removeMember] = useMutation(REMOVE_TASK_MEMBER, {
+  update(cache, { data }: any) {
+    const removedMemberId = data?.removeTaskMember?.id;
+    if (!removedMemberId) return;
+
+    const taskIdCache = cache.identify({ __typename: "Task", id: task.id });
+
+    cache.modify({
+      id: taskIdCache,
+      fields: {
+        assignees(existing: ReadonlyArray<any> = []) {
+          const mutable = [...existing] as any[];
+          return mutable.filter((a) => a.user.id !== removedMemberId);
+        },
+      },
+    });
+  },
+});
+
 
   const handleAssign = async (userId: string) => {
-    console.log("Assigning user:", userId, "to task:", task.id);
     await assignMember({
-      variables: { id: parseInt(task.id), userId: parseInt(userId) },
+      variables: { taskId: parseInt(task.id), userId: parseInt(userId) },
     });
     setIsAdding(false);
-    
   };
 
   const handleRemove = async (userId: string) => {
@@ -98,9 +136,9 @@ export default function TaskCard({ task, members = [] }: TaskCardProps) {
               className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-full text-xs"
             >
               <User className="w-3 h-3" />
-              <span>{m.name}</span>
+              <span>{m.user.name}</span>
               {task.status !== "COMPLETED" && (
-                <button onClick={() => handleRemove(m.id)}>
+                <button onClick={() => handleRemove(m.user.id)}>
                   <X className="w-3 h-3 text-red-500 hover:text-red-700" />
                 </button>
               )}
@@ -108,7 +146,7 @@ export default function TaskCard({ task, members = [] }: TaskCardProps) {
           ))}
         </div>
 
-        {/* Add member dropdown (only if not completed) */}
+        {/* Add member dropdown */}
         {task.status !== "COMPLETED" && (
           <div className="mt-2">
             {isAdding ? (
@@ -118,12 +156,11 @@ export default function TaskCard({ task, members = [] }: TaskCardProps) {
               >
                 <option value="">Select member</option>
                 {members
-                  .filter((m) => !task.assignees?.some((a) => a.id === m.id))
+                  .filter((m) => !task.assignees?.some((a) => a.user.id === m.user.id))
                   .map((m) => (
                     <option key={`${m.user.id}-${m.role}`} value={m.user.id}>
-  {m.user.name} ({m.user.email})
-</option>
-
+                      {m.user.name} ({m.user.email})
+                    </option>
                   ))}
               </select>
             ) : (

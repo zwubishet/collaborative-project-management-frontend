@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useMutation } from "@apollo/client/react";
-import { LOGIN_MUTATION, LOGOUT_MUTATION, REGISTER_MUTATION } from "../graphql/mutations";
+import { LOGOUT_MUTATION } from "../graphql/mutations";
 import { ME_QUERY } from "../graphql/queries";
 import { client } from "../apollo/client";
 import axios from "axios";
@@ -20,28 +20,7 @@ interface AuthContextType {
   refetchUser: () => Promise<void>;
 }
 
-interface LoginData {
-  login: {
-    accessToken: string;
-    user: User;
-  };
-}
-interface LoginVars {
-  email: string;
-  password: string;
-}
 
-interface RegisterData {
-  register: {
-    accessToken: string;
-    user: User;
-  };
-}
-interface RegisterVars {
-  name: string;
-  email: string;
-  password: string;
-}
 
 interface LogoutData {
   logout: boolean;
@@ -52,9 +31,6 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const [loginMutation] = useMutation<LoginData, LoginVars>(LOGIN_MUTATION);
-  const [registerMutation] = useMutation<RegisterData, RegisterVars>(REGISTER_MUTATION);
   const [logoutMutation] = useMutation<LogoutData>(LOGOUT_MUTATION);
 
 useEffect(() => {
@@ -100,29 +76,38 @@ useEffect(() => {
 }, []);
 
 const login = async (email: string, password: string) => {
-  const { data } = await loginMutation({
-    variables: { email, password },
-  });
+  try {
+    const response = await axios.post(
+      "http://localhost:4000/auth/login",
+      { email, password },
+      { withCredentials: true }
+    );
 
-  if (!data?.login?.accessToken) {
-    throw new Error("Invalid credentials");
+    localStorage.setItem("authToken", response.data.accessToken);
+    setUser(response.data.user); // optional if you return user info
+  } catch (error: any) {
+    throw error.response?.data || { message: "Login failed" };
   }
-
-  localStorage.setItem("authToken", data.login.accessToken);
-  setUser(data.login.user);
 };
+
 
 
 const register = async (name: string, email: string, password: string) => {
-  const { data } = await axios.post("http://localhost:4000/auth/register", {
-    withcridentials: true,
-    name,
-    email,
-    password,
-  });
+  const { data } = await axios.post(
+    "http://localhost:4000/auth/register",
+    { name, email, password },
+    {
+      withCredentials: true, // ✅ correct spelling & placement
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
   localStorage.setItem("authToken", data.accessToken);
   setUser(data.user);
 };
+
 
 
   const logout = async () => {

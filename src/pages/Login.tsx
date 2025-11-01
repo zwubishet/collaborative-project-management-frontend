@@ -18,8 +18,9 @@ export default function Login() {
 
   try {
     await login(email, password);
-    console.log("Login success, navigating...");
     navigate("/dashboard");
+    console.log("Login success, navigating to dashboard");
+    
   } catch (err: any) {
     console.error("Login error:", err);
     setError(err.message || "Failed to login");
