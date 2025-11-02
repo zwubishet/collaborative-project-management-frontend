@@ -26,11 +26,11 @@ export default function Dashboard() {
       email: string;
     };
   }[];
-  // projects: {
-  //   id: string;
-  //   name: string;
-  //   status: string;
-  // }[];
+  projects: {
+    id: string;
+    name: string;
+    status: string;
+  }[];
 }
 
 interface MyWorkspacesData {

@@ -25,6 +25,23 @@ export const LOGIN_MUTATION = gql`
   }
 `;
 
+export const UPDATE_PROFILE = gql`
+  mutation UpdateProfile($name: String, $email: String) {
+    updateProfile(name: $name, email: $email) {
+      id
+      name
+      email
+    }
+  }
+`;
+
+export const CHANGE_PASSWORD = gql`
+  mutation ChangePassword($oldPassword: String!, $newPassword: String!) {
+    changePassword(oldPassword: $oldPassword, newPassword: $newPassword)
+  }
+`;
+
+
 export const SEND_RESET_PASSWORD_MUTATION = gql`
   mutation SendResetPassword($email: String!) {
     sendResetPassword(email: $email)
@@ -48,7 +65,7 @@ export const CREATE_WORKSPACE = gql`
 `;
 
 export const UPDATE_WORKSPACE = gql`
-  mutation UpdateWorkspace($id: ID!, $name: String, $description: String) {
+  mutation UpdateWorkspace($id: Int!, $name: String, $description: String) {
     updateWorkspace(id: $id, name: $name, description: $description) {
       id
       name
@@ -58,7 +75,7 @@ export const UPDATE_WORKSPACE = gql`
 `;
 
 export const DELETE_WORKSPACE = gql`
-  mutation DeleteWorkspace($id: ID!) {
+  mutation DeleteWorkspace($id: Int!) {
     deleteWorkspace(id: $id)
   }
 `;

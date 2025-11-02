@@ -19,7 +19,7 @@ type WorkspaceQuery = {
     description?: string | null;
     owner: { id: number; name: string };
     members: { id: number; role: string; user: { id: number; name: string; email: string } }[];
-    projects: { id: number; name: string }[];
+    projects: { id: number; name: string; status: string }[];
   };
 };
 
@@ -49,7 +49,7 @@ export default function WorkspacePage() {
   const { user: loggedInUser } = useContext(AuthContext)!;
   const contextUserId = loggedInUser?.id ? Number(loggedInUser.id) : undefined;
 
-  const id = idStr ? parseInt(idStr, 10) : null;
+  const id = idStr ? Number(idStr) : null;   // <-- number!
   if (!id || isNaN(id)) return <p className="text-red-600">Invalid workspace ID</p>;
 
   // Fetch workspace data
@@ -145,6 +145,7 @@ const handleDelete = async () => {
   }
 
   const workspace = workspaceData.workspace;
+  console.log("Workspace project:", workspace.projects);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -176,8 +177,12 @@ const handleDelete = async () => {
                       title="Edit workspace"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
                       </svg>
                     </button>
 
@@ -187,22 +192,66 @@ const handleDelete = async () => {
                       className="text-red-600 hover:text-red-700 disabled:opacity-50"
                       title="Delete workspace"
                     >
-                      {deleting ? <Loader2 className="w-5 h-5 animate-spin"/> : <Trash2 className="w-5 h-5"/>}
+                      {deleting ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-5 h-5" />
+                      )}
                     </button>
                   </div>
                 )}
               </div>
 
+              {/* Description */}
               {workspace.description ? (
                 <p className="text-slate-600 mt-2 max-w-3xl">{workspace.description}</p>
               ) : (
                 <p className="text-slate-400 italic mt-2">No description</p>
               )}
 
-              {/* rest of the header (members count, owner badge…) */}
-              ...
+              {/* === Header – Owner, Members, Projects === */}
+              <div className="flex flex-wrap items-center gap-3 mt-3">
+                {/* Owner badge */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-500">Owner:</span>
+                  <span className="px-2.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                    {workspace.owner.name}
+                  </span>
+                </div>
+
+                {/* Members count badge */}
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-slate-600">
+                    {workspace.members.length} member{workspace.members.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {/* Projects count badge (optional) */}
+                {projects.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <svg
+                      className="w-4 h-4 text-slate-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <span className="text-sm text-slate-600">
+                      {projects.length} project{projects.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* New Project button */}
             <button
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2.5 px-5 py-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl hover:shadow-md transition-all font-medium text-sm"

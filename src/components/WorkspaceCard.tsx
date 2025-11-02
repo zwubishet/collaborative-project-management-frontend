@@ -7,7 +7,7 @@ interface Workspace {
   description?: string;
   createdAt: string;
   members: { id: string; name: string }[];
-  // projects: { id: string; name: string }[];
+  projects: { id: string; name: string }[];
 }
 
 interface WorkspaceCardProps {
@@ -16,7 +16,6 @@ interface WorkspaceCardProps {
 
 export default function WorkspaceCard({ workspace }: WorkspaceCardProps) {
   const navigate = useNavigate();
-
   return (
     <div
       onClick={() => navigate(`/workspace/${workspace.id}`)}
@@ -39,15 +38,22 @@ export default function WorkspaceCard({ workspace }: WorkspaceCardProps) {
           <Users className="w-4 h-4" />
           <span>{workspace.members?.length??0} members</span>
         </div>
-        {/* <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1">
           <FolderOpen className="w-4 h-4" />
           <span>{workspace.projects?.length??0} projects</span>
-        </div> */}
+        </div>
       </div>
 
       <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-500">
         <Calendar className="w-4 h-4" />
-        <span>Created {new Date(workspace.createdAt).toLocaleDateString()}</span>
+        <span>
+            Created{" "}
+            {new Date(Number(workspace.createdAt)).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+        </span>
       </div>
     </div>
   );

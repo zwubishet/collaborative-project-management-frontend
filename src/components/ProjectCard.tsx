@@ -40,6 +40,8 @@ export default function ProjectCard({ project }: ProjectCardProps) {
       }
     : { total: 0, completed: 0 };
 
+    console.log("Rendering ProjectCard for project:", project);
+
   return (
     <div
       onClick={() => navigate(`/project/${project.id}`)}
