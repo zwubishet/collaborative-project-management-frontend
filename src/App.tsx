@@ -7,15 +7,41 @@ import Dashboard from "./pages/Dashboard";
 import WorkspacePage from "./pages/WorkspacePage";
 import ProjectPage from "./pages/ProjectPage";
 import ForgotPassword from "./components/ForgotPassword";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        {/* Toaster inside AuthProvider so auth toasts work */}
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: "#333",
+              color: "#fff",
+              fontSize: "14px",
+              borderRadius: "8px",
+              padding: "12px 16px",
+            },
+            success: {
+              icon: "Success",
+              style: { background: "#10b981" },
+            },
+            error: {
+              icon: "Error",
+              style: { background: "#ef4444" },
+            },
+          }}
+        />
+
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Protected Routes */}
           <Route
             path="/dashboard"
             element={
@@ -40,6 +66,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

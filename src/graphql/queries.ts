@@ -128,6 +128,15 @@ export const GET_PROJECT = gql`
         status
         createdAt
         updatedAt
+        priority
+        assignees {
+          id
+          user {
+            id
+            name
+            email
+          }
+        }
       }
     }
   }
@@ -144,21 +153,21 @@ export const GET_TASK = gql`
       createdAt
       updatedAt
       project {
-        id
-        name
-        workspace {
           id
           name
+          workspace {
+            id
+            name
+          }
+        }
+      assignees {
+        id
+        user {
+          id
+          name
+          email
         }
       }
-      assignees {
-      id
-      user {
-        id
-        name
-        email
-      }
-    }
-    }
+   }
   }
 `;

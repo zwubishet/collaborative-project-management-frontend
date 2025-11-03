@@ -113,20 +113,20 @@ export const CREATE_PROJECT = gql`
   }
 `;
 
+// src/graphql/mutations.ts
 export const UPDATE_PROJECT = gql`
-  mutation UpdateProject($id: ID!, $name: String, $description: String, $status: String) {
+  mutation UpdateProject($id: Int!, $name: String, $description: String, $status: String) {
     updateProject(id: $id, name: $name, description: $description, status: $status) {
       id
       name
       description
       status
-      updatedAt
     }
   }
 `;
 
 export const DELETE_PROJECT = gql`
-  mutation DeleteProject($id: ID!) {
+  mutation DeleteProject($id: Int!) {
     deleteProject(id: $id)
   }
 `;
@@ -145,22 +145,35 @@ mutation AddTask($input: AddTaskInput!) {
 `;
 
 export const UPDATE_TASK = gql`
-  mutation UpdateTask($id: ID!, $title: String, $description: String, $status: String, $priority: String, $dueDate: String, $assigneeId: ID) {
-    updateTask(id: $id, title: $title, description: $description, status: $status, priority: $priority, dueDate: $dueDate, assigneeId: $assigneeId) {
+  mutation UpdateTask(
+    $taskId: Int!
+    $title: String
+    $description: String
+    $status: String
+    $priority: String
+    $dueDate: String
+  ) {
+    updateTask(
+      taskId: $taskId
+      title: $title
+      description: $description
+      status: $status
+      priority: $priority
+      dueDate: $dueDate
+    ) {
       id
       title
       description
       status
       priority
       dueDate
-      updatedAt
     }
   }
 `;
 
 export const DELETE_TASK = gql`
-  mutation DeleteTask($id: ID!) {
-    deleteTask(id: $id)
+  mutation DeleteTask($taskId: Int!) {
+    deleteTask(taskId: $taskId)
   }
 `;
 
@@ -168,15 +181,14 @@ export const ASSIGN_TASK_MEMBER = gql`
   mutation AssignTaskMember($taskId: Int!, $userId: Int!) {
     assignTaskMember(taskId: $taskId, userId: $userId) {
       id
-      title
-     assignees {
-  id
-  user {
-    id
-    name
-    email
-  }
-}
+      assignees {
+        id
+        user {
+          id
+          name
+          email
+        }
+      }
     }
   }
 `;
@@ -185,13 +197,15 @@ export const REMOVE_TASK_MEMBER = gql`
   mutation RemoveTaskMember($taskId: Int!, $userId: Int!) {
     removeTaskMember(taskId: $taskId, userId: $userId) {
       id
-      title
       assignees {
         id
-        name
+        user {
+          id
+          name
+          email
+        }
       }
     }
   }
 `;
-
 

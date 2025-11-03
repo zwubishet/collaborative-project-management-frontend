@@ -1,19 +1,22 @@
 // src/pages/ProjectPage.tsx
 import { useState, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSuspenseQuery, skipToken } from "@apollo/client/react";
-import { ArrowLeft, Plus, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { useSuspenseQuery, skipToken, useMutation } from "@apollo/client/react";
+import { ArrowLeft, Plus, CheckCircle2, Clock, AlertCircle, Loader2, Trash2 } from "lucide-react";
 import { GET_PROJECT, GET_WORKSPACE } from "../graphql/queries";
+import { UPDATE_PROJECT, DELETE_PROJECT } from "../graphql/mutations";
 import Navbar from "../components/Navbar";
 import TaskCard from "../components/TaskCard";
 import CreateTaskModal from "../components/CreateTaskModal";
+import EditProjectModal from "../components/EditProjectModal";
+import { useAuth } from "../contexts/AuthContext";
+import toast from "react-hot-toast";
 
-
- type GetProjectQueryVariables = {
+type GetProjectQueryVariables = {
   projectId: number;
 };
 
- type GetProjectQuery = {
+type GetProjectQuery = {
   project: {
     description: null;
     id: string;
@@ -38,6 +41,15 @@ import CreateTaskModal from "../components/CreateTaskModal";
       status: "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED" | string;
       createdAt: string;
       updatedAt: string;
+      priority: "LOW" | "MEDIUM" | "HIGH" | string;
+      assignees: {
+        id: string;
+        user: {
+          id: string;
+          name: string;
+          email: string;
+        };
+      }[];
     }[];
   };
 };
@@ -57,57 +69,92 @@ function ProjectContent() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const auth = useAuth();
+  const currentUserId = auth?.user?.id ? Number(auth.user.id) : null;
 
-const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
-  GET_PROJECT,
-  id ? { variables: { projectId: parseInt(id, 10) } } : skipToken
-);
+  const { data } = useSuspenseQuery<GetProjectQuery, GetProjectQueryVariables>(
+    GET_PROJECT,
+    id ? { variables: { projectId: parseInt(id, 10) } } : skipToken
+  );
 
-  // 2️⃣ Extract workspaceId from project
   const workspaceId = data?.project?.workspace?.id;
   console.log("Workspace ID:", workspaceId);
 
+  const { data: workspaceData } = useSuspenseQuery<WorkspaceQuery>(
+    GET_WORKSPACE,
+    workspaceId ? { variables: { id: workspaceId } } : skipToken
+  );
 
-const { data: workspaceData } = useSuspenseQuery<WorkspaceQuery>(
-  GET_WORKSPACE,
-  workspaceId ? { variables: { id: workspaceId } } : skipToken
-);
+  // ---- EDIT & DELETE MUTATIONS (only added) ----
+const [updateProject, { loading: updating }] = useMutation(UPDATE_PROJECT, {
+  onCompleted: () => {
+    toast.success("Project updated successfully!");
+    setIsEditModalOpen(false);
+  },
+  onError: (err) => {
+    toast.error(err.message || "Failed to update project");
+  },
+  refetchQueries: [{ query: GET_PROJECT, variables: { projectId: parseInt(id!, 10) } }],
+});
 
-console.log("Workspace Data:", workspaceData?.workspace.members);
+const [deleteProject, { loading: deleting }] = useMutation(DELETE_PROJECT, {
+  onCompleted: () => {
+    toast.success("Project deleted successfully");
+    navigate(`/workspace/${workspaceId}`);
+  },
+  onError: (err) => {
+    toast.error(err.message || "Failed to delete project");
+  },
+});
 
+  const handleUpdate = async (name: string, description: string | null, status: string) => {
+    await updateProject({
+      variables: {
+        id: parseInt(project.id, 10),
+        name: name.trim(),
+        description: description?.trim() || null,
+        status,
+      },
+    });
+    setIsEditModalOpen(false);
+  };
 
+  const handleDelete = async () => {
+    if (!confirm("Delete this project? All tasks will be permanently removed.")) return;
+    try {
+      await deleteProject({ variables: { id: parseInt(project.id, 10) } });
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+  // ---------------------------------------------
 
-if (!data) {
-  throw new Error("Project data is undefined");
-}
+  if (!data) {
+    throw new Error("Project data is undefined");
+  }
 
   const project = data.project;
   const workspace = workspaceData?.workspace;
-const taskCardMembers = workspace?.members?.map((m) => ({
-  id: m.user.id.toString(),
-  role: m.role,
-  user: {
-    ...m.user,
-    id: m.user.id.toString(), // convert user.id to string
-  },
-})) || [];
-const taskCardMembersForModal = workspace?.members?.map((m) => ({
-  id: m.user.id.toString(),
-  name: m.user.name,
-})) || [];
+  const taskCardMembers = workspace?.members?.map((m) => ({
+    id: m.user.id.toString(),
+    role: m.role,
+    user: {
+      ...m.user,
+      id: m.user.id.toString(),
+    },
+  })) || [];
+  const taskCardMembersForModal = workspace?.members?.map((m) => ({
+    id: m.user.id.toString(),
+    name: m.user.name,
+  })) || [];
 
-
-  console.log(project.tasks);
   const tasksByStatus = {
     TODO: project.tasks.filter((t: any) => t.status === "TODO"),
     IN_PROGRESS: project.tasks.filter((t: any) => t.status === "IN_PROGRESS"),
     IN_REVIEW: project.tasks.filter((t: any) => t.status === "IN_REVIEW"),
     COMPLETED: project.tasks.filter((t: any) => t.status === "COMPLETED"),
   };
-  console.log("Tasks by status:", tasksByStatus);
-  console.log("Workspace members:", workspace?.members);
 
   const statusColors = {
     ACTIVE: "bg-green-100 text-green-700",
@@ -146,7 +193,37 @@ const taskCardMembersForModal = workspace?.members?.map((m) => ({
                   <StatusIcon className="w-3 h-3" />
                   {project.status}
                 </span>
+
+                {/* ---- OWNER-ONLY EDIT/DELETE BUTTONS ---- */}
+                {workspace?.owner.id === currentUserId && (
+                  <div className="flex gap-2 ml-4">
+                    <button
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="text-slate-600 hover:text-slate-900"
+                      title="Edit project"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="text-red-600 hover:text-red-700 disabled:opacity-50"
+                      title="Delete project"
+                    >
+                      {deleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                    </button>
+                  </div>
+                )}
+                {/* --------------------------------------- */}
               </div>
+
               {project.description != null && (
                 <p className="text-slate-600 mb-4">{project.description}</p>
               )}
@@ -195,9 +272,8 @@ const taskCardMembersForModal = workspace?.members?.map((m) => ({
                 </span>
               </div>
               {tasksByStatus.TODO.map((task: any, index: number) => (
-  <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
-))
-}
+                <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
+              ))}
             </div>
 
             <div className="space-y-4">
@@ -208,10 +284,8 @@ const taskCardMembersForModal = workspace?.members?.map((m) => ({
                 </span>
               </div>
               {tasksByStatus.IN_PROGRESS.map((task: any, index: number) => (
-  <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
-))
-}
-
+                <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
+              ))}
             </div>
 
             <div className="space-y-4">
@@ -222,8 +296,8 @@ const taskCardMembersForModal = workspace?.members?.map((m) => ({
                 </span>
               </div>
               {tasksByStatus.IN_REVIEW.map((task: any, index: number) => (
-  <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
-))}
+                <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
+              ))}
             </div>
 
             <div className="space-y-4">
@@ -234,8 +308,8 @@ const taskCardMembersForModal = workspace?.members?.map((m) => ({
                 </span>
               </div>
               {tasksByStatus.COMPLETED.map((task: any, index: number) => (
-  <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
-))}
+                <TaskCard key={`${task.id}-${index}`} task={task} members={taskCardMembers} />
+              ))}
             </div>
           </div>
         )}
@@ -246,6 +320,20 @@ const taskCardMembersForModal = workspace?.members?.map((m) => ({
         onClose={() => setIsModalOpen(false)}
         projectId={parseInt(project.id, 10)}
         members={taskCardMembersForModal}
+      />
+
+      {/* ---- EDIT MODAL (inside ProjectContent so `project` is in scope) ---- */}
+      <EditProjectModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        project={{
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          status: project.status,
+        }}
+        onSave={handleUpdate}
+        saving={updating}
       />
     </>
   );
